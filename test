@@ -1,0 +1,11 @@
+class Mathematics
+  def power n
+    return n**2
+  end
+end
+
+obj1 = Mathematics.new
+obj2 = Mathematics.new
+
+puts obj1.power 2
+puts obj2.power 2

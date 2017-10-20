@@ -78,12 +78,17 @@ describe AssignmentsController do
 
   describe '#toggle_access' do
     it 'changes access permissions of one assignment from public to private or vice versa and redirects to tree_display#list page' do
-      params = {:id => 1}
-      allow(Assignment).to receive(:find).and_return(assignment)
-      allow(assignment).to receive(:private).and_return(!:private)
-      allow(assignment).to receive(:save).and_return(true)
+      sleep(10)
+      params = {:id => 2}
+      get :toggle_access, params
+      allow(Assignment).to receive(:find).with(2).and_return(assignment)
+      #allow(assignment).to receive(:private).and_return(!:private)
+      #allow(assignment).to receive(:save).and_return(true)
       #expect(controller.send(:toggle_access)).to be true
-      #expect(response).to redirect_to(list_tree_display_index_path)
+      #controller.send(:toggle_access)
+      expect(assignment.count).to eql 2
+      expect(assignment.second.private).to be true#
+      expect(response).to redirect_to 'tree_display/list'
     end
   end
 
