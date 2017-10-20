@@ -8,7 +8,7 @@ describe AssignmentsController do
   let(:assignment_form) { double('AssignmentForm') }
   let(:admin) { build(:admin) }
   let(:instructor) { build(:instructor, id: 6) }
-  let(:instructor2) { build(:instructor, id: 66) }
+  let(:instructor2) { build(:instructor, id: 10) }
   let(:ta) { build(:teaching_assistant, id: 8) }
   let(:student) { build(:student) }
   before(:each) do
@@ -20,80 +20,91 @@ describe AssignmentsController do
     context 'when params action is edit or update' do
       context 'when the role name of current user is super admin or admin' do
         it 'allows certain action' do
-          params = {:id => 1, :action => "edit"}
-          allow(ApplicationController).to receive(:current_role_name).and_return("Administrator")
+          stub_current_user(admin, admin.role.name, admin.role)
+          controller.params = {:id => '1', :action => "edit"}
           expect(controller.send(:action_allowed?)).to be true
         end
       end
 
       context 'when current user is the instructor of current assignment' do
         it 'allows certain action' do
-          params = {:id => 1, :action => "update"}
-          allow(Assignment).to receive(:find).and_return(assignment)
-          allow(ApplicationController).to receive(:current_user).and_return(:instructor)
-          # allow(User).to receive(:id).and_return(6)
+          controller.params = {:id => '1', :action => "edit"}
           expect(controller.send(:action_allowed?)).to be true
         end
       end
 
       context 'when current user is the ta of the course which current assignment belongs to' do
         it 'allows certain action' do
-          # params = {:id => 1, :action => "update"}
-          # allow(ApplicationController).to receive(:current_user).and_return(:ta)
-          # allow(:ta).to receive(:id).and_return(8)
-          # expect(controller.send(:action_allowed?)).to be true
+          stub_current_user(ta, ta.role.name, ta.role)
+          allow(TaMapping).to receive(:exists?).and_return(true)
+          controller.params = {:id => '1', :action => "update"}
+          expect(controller.send(:action_allowed?)).to be true
         end
       end
 
       context 'when current user is a ta but not the ta of the course which current assignment belongs to' do
         it 'does not allow certain action' do
-          # params = {:id => 1, :action => "update"}
-          # ta2 = build(:teaching_assistant, id: 4)
-          # allow(ApplicationController).to receive(:current_user).and_return(ta2)
-          # allow(ta2).to receive(:id).and_return(4)
-          # allow(TaMapping).to receive(:exist?).with(:ta_id, :course_id).and_return(false)
-          # expect(controller.send(:action_allowed?)).to be false
+          ta2 = build(:teaching_assistant, id: 4)
+          stub_current_user(ta2, ta2.role.name, ta2.role)
+          allow(TaMapping).to receive(:exists?).and_return(false)
+          controller.params = {:id => '1', :action => "update"}
+          expect(controller.send(:action_allowed?)).to be false
         end
       end
 
       context 'when current user is the instructor of the course which current assignment belongs to' do
-        it 'allows certain action'
+        it 'allows certain action' do
+          controller.params = {:id => '1', :action => "edit"}
+          expect(controller.send(:action_allowed?)).to be true
+        end
       end
 
       context 'when current user is an instructor but not the instructor of current course or current assignment' do
-        it 'does not allow certain action'
+        it 'does not allow certain action' do
+          stub_current_user(instructor2, instructor2.role.name, instructor2.role)
+          controller.params = {:id => '1', :action => "edit"}
+          expect(controller.send(:action_allowed?)).to be false
+        end
       end
     end
 
     context 'when params action is not edit and update' do
       context 'when the role current user is super admin/admin/instractor/ta' do
-        it 'allows certain action except edit and update'
+        it 'allows certain action except edit and update' do
+          stub_current_user(ta, ta.role.name, ta.role)
+          controller.params = {:id => '1', :action => "create"}
+          expect(controller.send(:action_allowed?)).to be true
+        end
       end
 
       context 'when the role current user is student' do
-        it 'does not allow certain action'
+        it 'does not allow certain action' do
+          stub_current_user(student, student.role.name, student.role)
+          controller.params = {:id => '1', :action => "create"}
+          expect(controller.send(:action_allowed?)).to be false
+        end
       end
     end
   end
 
   describe '#toggle_access' do
     it 'changes access permissions of one assignment from public to private or vice versa and redirects to tree_display#list page' do
-      sleep(10)
-      params = {:id => 2}
+    # sleep(10000)
+      params = {:id => '1'}
+      # allow(Assignment).to receive(:find).with('').and_return(assignment)
+      # allow(assignment).to receive(:private).and_return(true)
+      # allow(assignment).to receive(:save).and_return(true)
+      allow(assignment).to receive(:save).and_return(true)
       get :toggle_access, params
-      allow(Assignment).to receive(:find).with(2).and_return(assignment)
-      #allow(assignment).to receive(:private).and_return(!:private)
-      #allow(assignment).to receive(:save).and_return(true)
-      #expect(controller.send(:toggle_access)).to be true
-      #controller.send(:toggle_access)
-      expect(assignment.count).to eql 2
-      expect(assignment.second.private).to be true#
-      expect(response).to redirect_to 'tree_display/list'
+      # expect(Assignment.count).to eq(1)
+      # expect(Assignment.second.private).to be true
+      expect(response).to redirect_to '/tree_display/list'
     end
   end
 
   describe '#new' do
     it 'creates a new AssignmentForm object and renders assignment#new page' do
+<<<<<<< HEAD
 
       allow(Assignment).to receive(:new).and_return(:assignment_form)
       expect(:assignment_form).to be ||= current_user
@@ -101,50 +112,62 @@ describe AssignmentsController do
       #get :new
       #expect(assigns(:assignment_form)).to be_kind_of(AssignmentForm)
       #expect(response).to render_template(:new)
+=======
+      # allow(AssignmentForm).to receive(:new).and_return(:assignment_form)
+      # allow(:assignment_form).to receive_message_chain(:assignment, :instructor).and_return(:instructor)
+      get :new
+      expect(assigns(:assignment_form)).to be_kind_of(AssignmentForm)
+      expect(response).to render_template(:new)
+>>>>>>> 446ee0df6012a19d2db4b6d40886a5f54ee301c1
     end
   end
 
   describe '#create' do
-    # params = {
-    #   assignment_form: {
-    #     assignment: {
-    #       instructor_id: 2,
-    #       course_id: 1,
-    #       max_team_size: 1,
-    #       id: 1,
-    #       name: 'test assignment',
-    #       directory_path: '/test',
-    #       spec_location: '',
-    #       show_teammate_reviews: false,
-    #       require_quiz: false,
-    #       num_quiz_questions: 0,
-    #       staggered_deadline: false,
-    #       microtask: false,
-    #       reviews_visible_to_all: false,
-    #       is_calibrated: false,
-    #       availability_flag: true,
-    #       reputation_algorithm: 'Lauw',
-    #       simicheck: -1,
-    #       simicheck_threshold: 100
-    #     }
-    #   }
-    # }
+    params = {
+      assignment_form: {
+        assignment: {
+          instructor_id: 2,
+          course_id: 1,
+          max_team_size: 1,
+          id: 1,
+          name: 'test assignment',
+          directory_path: '/test',
+          spec_location: '',
+          show_teammate_reviews: false,
+          require_quiz: false,
+          num_quiz_questions: 0,
+          staggered_deadline: false,
+          microtask: false,
+          reviews_visible_to_all: false,
+          is_calibrated: false,
+          availability_flag: true,
+          reputation_algorithm: 'Lauw',
+          simicheck: -1,
+          simicheck_threshold: 100
+        }
+      }
+    }
     context 'when assignment_form is saved successfully' do
       it 'redirets to assignment#edit page' do
         # af = double('AssignmentForm', :save => true)
-        # allow(AssignmentForm).to receive(:new).and_return(af)
-        # # allow(AssignmentForm).to receive(:save).and_return(true)
-        # post :create, params
-        # expect(response).to redirect_to edit_assignment_path
+        # allow(assignment_form_params).to
+        allow(AssignmentForm).to receive(:new).and_return(assignment_form)
+        allow(assignment_form).to receive(:save).and_return(true)
+        allow(assignment_form).to receive(:create_assignment_node).and_return(true)
+        allow_any_instance_of(ApplicationController).to receive(:undo_link).and_return(true)
+        allow(assignment_form).to receive(:assignment).and_return(double("Assignment", :id=>1, :name=>"test assignment"))
+        post :create, params
+        expect(response).to redirect_to edit_assignment_path 1
       end
     end
 
     context 'when assignment_form is not saved successfully' do
       it 'renders assignment#new page' do
-        # allow(assignment_form).to receive(:new).and_return(double('AssignmentForm'))
-        # allow(assignment_form).to receive(:save).and_return(false)
-        # post :create, params
-        # expect(response).to redirect_to new_assignment_path
+        # allow(AssignmentForm).to receive(:new).and_return(double('AssignmentForm'))
+        allow(AssignmentForm).to receive(:new).and_return(assignment_form)
+        allow(assignment_form).to receive(:save).and_return(false)
+        post :create, params
+        expect(response).to render_template(:new)
       end
     end
   end
@@ -233,7 +256,7 @@ describe AssignmentsController do
           # usr = double('User', timezonepref: nil, parent_id: 1)
           # parent = double('User', timezonepref: "UTC")
           # allow(User).to receive(:find).and_return(parent)
-          # allow(ApplicationController).to receive(:current_user).and_return(usr)
+          # allow_any_instance_of(ApplicationController).to receive(:current_user).and_return(usr)
           # allow(assignment_form).to receive_message_chain(assignment, instructor).with(usr)
           # post :update, params
           # expect(flash[:error]).to eq("We strongly suggest that instructors specify their preferred timezone to guarantee the correct display time. For now we assume you are in UTC")
