@@ -21,7 +21,8 @@ describe AssignmentsController do
       context 'when the role name of current user is super admin or admin' do
         it 'allows certain action' do
           stub_current_user(admin, admin.role.name, admin.role)
-          controller.params = {:id => '1', :action => "edit"}
+          controller.params = {
+              :id => '1', :action => "edit"}
           expect(controller.send(:action_allowed?)).to be true
         end
       end
@@ -104,21 +105,11 @@ describe AssignmentsController do
 
   describe '#new' do
     it 'creates a new AssignmentForm object and renders assignment#new page' do
-<<<<<<< HEAD
-
-      allow(Assignment).to receive(:new).and_return(:assignment_form)
-      expect(:assignment_form).to be ||= current_user
-      # allow(AssignmentForm).to receive(:new).and_return(:assignment_form)
-      #get :new
-      #expect(assigns(:assignment_form)).to be_kind_of(AssignmentForm)
-      #expect(response).to render_template(:new)
-=======
       # allow(AssignmentForm).to receive(:new).and_return(:assignment_form)
       # allow(:assignment_form).to receive_message_chain(:assignment, :instructor).and_return(:instructor)
       get :new
       expect(assigns(:assignment_form)).to be_kind_of(AssignmentForm)
       expect(response).to render_template(:new)
->>>>>>> 446ee0df6012a19d2db4b6d40886a5f54ee301c1
     end
   end
 
