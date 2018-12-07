@@ -2,14 +2,39 @@
       <!-- the table creation is changed top accomodate functionality of tablesorter, which requires thead and tbody seperately. Previously, headers were in tbody only -->
 <div class = 'reviewreport'>
   <!-- Added headers for tablesorter -->
-  
+
 <script type='text/javascript'>
 $(window).load(function(){
 $("#myTable tbody").sortable().disableSelection();
 });
-</script>
 
-  <table id="myTable" class="tbl_heat tablesorter" width="100%" cellspacing='0' cellpadding='2' border='0'>
+function showHideReviewTime(studentId){
+    var id = "myDiv_"+studentId;
+    /* alert(id.toString());*/
+    /*var show = element.innerHTML == 'Hide all team members'; */
+    if (document.getElementById(id).style.display == "none"){
+        document.getElementById(id).style.display="block";
+    }else{
+        document.getElementById(id).style.display = "none";
+    }
+    //toggleTeamMembersInTeamsListPage();
+}
+</script>
+  <% def get_link_round_review_time(map_id, round, link) %>
+      <% sum_time = 0 %>
+      <% links = ResponseTime.where(map_id: map_id, round: round, link: link) %>
+      <% links.each do |link_time| %>
+          <% if link_time.end_at.nil? || link_time.start_at.nil? %>
+              <% individual_time = 0 %>
+          <% else %>
+              <% individual_time = (link_time.end_at.to_i - link_time.start_at.to_i)/60.0 %>
+          <% end %>
+          <% individual_time = individual_time<0? 0: individual_time %>
+          <% sum_time = individual_time + sum_time %>
+      <% end %>
+      <% sum_time %>
+  <% end %>
+  <table id="myTable" class="tbl_heat tablesorter" width="100%" cellspacing='0'  cellpadding='2' border='0'>
     <thead>
     <tr bgcolor='#CCCCCC'>
   <!-- class value decides whether the column should be sortable or not  -->
@@ -38,6 +63,8 @@ $("#myTable tbody").sortable().disableSelection();
             <td bgcolor=<%= @bgcolor %>>
               <%= link_to user.name, :controller => 'popup', :action => 'reviewer_details_popup', :id => r.id, :assignment_id=>@id %>
               (<%= user.fullname %>)
+              <br>
+              <a id="time" onclick="showHideReviewTime(<%= r.id.to_s %>);">Review time spent on task</a>
             </td>
             <!--# reviews done-->
             <td bgcolor=<%= @bgcolor %> align = 'left'>
@@ -72,31 +99,30 @@ $("#myTable tbody").sortable().disableSelection();
                 <!--Author feedback-->
                 <!--Dr.Kidd required to add a "autor feedback" column that shows the average score the reviewers received from the authors. In this case, she can see all the data on a single screen.-->
                 <!--Dr.Kidd's course-->
-                <% if @assignment.instructor_id == 2026 %>
-                  <% if index == 0 %>
-                  <div>
-                  <% else %>
-                  <div style="border-top: solid; border-width: 1px;">
-                  <% end %>
-                    <%= calcutate_average_author_feedback_score(@assignment.id, @assignment.max_team_size, ri.id, ri.reviewee_id) %>
-                  </div>
-                <% end %>
+                <!% if @assignment.instructor_id == 2026 %>
+                  <!% if index == 0 %>
+                  <!--<div>-->
+                  <!% else %>
+                  <!--<div style="border-top: solid; border-width: 1px;">-->
+                  <!% end %>
+                    <!%= calcutate_average_author_feedback_score(@assignment.id, @assignment.max_team_size, ri.id, ri.reviewee_id) %>
+                  <!--</div>-->
+                <!% end %>
               <%end%>
           <%end %>
           </td>
-          
-          
+
+
           <!--Score awarded / Avg. score-->
           <td bgcolor=<%= @bgcolor %> align = 'left' >
           <% @response_maps.each_with_index do |ri, index| %>
             <% if Team.where(id: ri.reviewee_id).length > 0 %>
                 <%@team = Team.find(ri.reviewee_id) %>
-                <%= render partial: 'review_submissions_time_spent',  locals: {bgcolor: @bgcolor, map_id: ri.id} %>
                 <%= render partial: 'team_score',  locals: {bgcolor: @bgcolor, team_id: @team.id, reviewer_id: r.id} %>
             <%end %>
           <%end %>
           </td>
-          
+
 
           <!--Metrics-->
           <td bgcolor=<%= @bgcolor %> align = 'left'>
@@ -123,10 +149,94 @@ $("#myTable tbody").sortable().disableSelection();
                 </table>
             <% end %>
           </td>
-          
-          
-          
-        <%end %>  
+              <td style="display:none;" id="myDiv_<%= r.id.to_s %>">
+                <div id="responsetime">
+                  <% reviewee_list = Array.new %>
+                  <% total_time_list = Array.new %>
+                  <% timeHash = Hash.new %>
+                  <h3> Response time details</h3>
+                  <div>
+                    <table style="width:40%;word-wrap:break-word">
+                      <tr>
+                        <th align="right">Reviewee id </th>
+                        <th align="right">Total Time (mins)</th>
+                        <th align="right">Round </th>
+                        <th align="right ;style=width:60%">Links</th>
+                        <th align="right">Time per link (mins)</th>
+                        <th></th>
+                      </tr>
+                      <% @reviewers = Participant.where(user_id:user.id) %>
+                      <!%= "user is:"+user.id.to_s%>
+                      <% @reviewers.each do |reviewer| %> <!-- for reviewer-->
+                          <!%="Reviewer id is : "+reviewer.id.to_s %>
+                          <% @response_maps = ResponseMap.where(reviewer_id: reviewer.id, reviewed_object_id: @id)  %>
+                          <% @number_of_rounds = Assignment.find(@id).rounds_of_reviews %>
+                          <!%= "no. of rounds: "+ @number_of_rounds.to_s %>
+                          <% reviewee_count = 0 %>
+                          <% total_time=0 %>
+                          <% @response_maps.each do |map| %>  <!-- for reviewee-->
+                              <!%= "map id: "+map.id.to_s %>
+                              <% map_total_time = 0 %>
+                              <% (1..@number_of_rounds).each do |each_round| %>  <!-- for rounds-->
+                                  <% @per_round_time = Array.new %>
+                                  <% @responsetime_match = ResponseTime.where(map_id: map.id, round:each_round)%>
+                                  <% @reviewed_object_id = map.reviewed_object_id %>
+                                  <% @reviewee_id = map.reviewee_id %>
+                                  <% link_list = Array.new %>
+                                  <% @count = 0 %>   <!--- To print revieweeId only once-->
+                                  <% @dummy = "      " %>    <!---Empty string as a placeholder-->
+                                  <% @responsetime_match.each do |responsetime_entry| %>
+                                      <% if link_list.include?(responsetime_entry.link) %><!-- only unique links per round-->
+                                      <% else %>
+                                          <% link_list.push(responsetime_entry.link) %>
+                                          <tr>
+                                            <% if @count == 0 %>  <!--- print revieweeId,time, round only for the first row-->
+                                                <td><%= Team.where(id:@reviewee_id).first.name.to_s %></td>
+                                                <td id=<%= map.id.to_s %>></td>
+                                                <td><%= responsetime_entry.round %></td>
+                                            <% else %>        <!--- Else print dummy-->
+                                                <td><%= @dummy %></td>
+                                                <td><%= @dummy %></td>
+                                                <td><%= " "%></td>
+                                            <%end%>
+                                            <td  style="word-wrap: break-word; width:60%"><%= responsetime_entry.link %></td>
+                                            <% individual_link_time = get_link_round_review_time(responsetime_entry.map_id,responsetime_entry.round,responsetime_entry.link) %>
+
+                                            <% map_total_time = map_total_time + individual_link_time %>
+
+                                            <% each_link_detail = Array.new %>
+                                            <% each_link_detail << responsetime_entry.link %>
+                                            <% each_link_detail << individual_link_time %>
+                                            <% @per_round_time << each_link_detail %>
+                                            <td align="center"><%= (individual_link_time).round(2) %></td>
+                                          </tr>
+                                      <% end %>
+                                      <% @count=@count+1 %>
+                                  <%end %>   <!-- end for link-->
+                                  <% timeHash[(@reviewee_id.to_s).concat(each_round.to_s)] = @per_round_time %>
+                              <% end%>    <!-- end for round-->
+                              <% reviewee_list << @reviewee_id %>
+                              <% total_time_list << map_total_time.round(2) %>
+                              <script type="text/javascript">
+                                  function calculateTotalTime() {
+                                      var totalTime = <%= map_total_time.round(2) %>;
+                                      document.getElementById(<%= map.id.to_s %>).innerHTML = totalTime;
+                                  }
+                                  calculateTotalTime();
+                              </script>
+
+                              <% reviewee_count = reviewee_count+1%>
+                          <% end %>  <!-- end for reviewee-->
+
+                      <% end %>  <!-- end for reviewer-->
+                    </table>
+                  </div>
+                </div>
+              </td>
+
+
+        <%end %>
+
         </tr>
       <%end %>
 </table>
@@ -194,4 +304,5 @@ $.tablesorter.addParser({
   type: 'numeric'
 });
 </script>
+
 
